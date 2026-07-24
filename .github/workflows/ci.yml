@@ -1,0 +1,175 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUST_TOOLCHAIN_VERSION: "1.97.1"
+  CARGO_INCREMENTAL: "0"
+  PROJ_NETWORK: "OFF"
+
+jobs:
+  lockfiles:
+    name: Committed lockfiles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Require Action-generated lockfiles
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -f package-lock.json
+          test -f src-tauri/Cargo.lock
+
+  web:
+    name: Web lint, typecheck, test, build
+    needs: lockfiles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js with npm cache
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install exactly locked frontend dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build web assets
+        run: npm run build:web
+
+  rust:
+    name: Rust format, clippy, test
+    needs: lockfiles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Tauri Linux build prerequisites on the runner
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            pkg-config
+
+      - name: Set up pinned Rust
+        shell: bash
+        run: bash .github/scripts/setup-rust.sh
+
+      - name: Cache Cargo downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN_VERSION }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      - name: Check formatting
+        working-directory: src-tauri
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets --all-features -- -D warnings
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets --all-features
+
+  exiftool:
+    name: ExifTool 13.59 smoke (${{ matrix.name }})
+    needs: lockfiles
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-14
+          - name: Windows x64
+            os: windows-2025
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prepare verified macOS ExifTool distribution
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash .github/scripts/prepare-exiftool.sh \
+            "${GITHUB_WORKSPACE}/src-tauri/resources/exiftool" \
+            "${RUNNER_TEMP}/geotagger-exiftool-fixture.jpg"
+
+      - name: Verify macOS ExifTool write and read
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash .github/scripts/verify-exiftool.sh \
+            "${GITHUB_WORKSPACE}/src-tauri/resources/exiftool" \
+            "${RUNNER_TEMP}/geotagger-exiftool-fixture.jpg"
+
+      - name: Prepare verified Windows ExifTool distribution
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE/.github/scripts/prepare-exiftool.ps1" `
+            -Destination "$env:GITHUB_WORKSPACE/src-tauri/resources/exiftool" `
+            -FixturePath "$env:RUNNER_TEMP/geotagger-exiftool-fixture.jpg"
+
+      - name: Verify Windows ExifTool write and read
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE/.github/scripts/verify-exiftool.ps1" `
+            -ExifToolDirectory "$env:GITHUB_WORKSPACE/src-tauri/resources/exiftool" `
+            -FixturePath "$env:RUNNER_TEMP/geotagger-exiftool-fixture.jpg"

@@ -1,0 +1,39 @@
+[package]
+name = "geotagger"
+version = "0.1.0"
+description = "Local-first photo geotagging workbench"
+authors = ["GeoTagger contributors"]
+edition = "2021"
+rust-version = "1.77.2"
+license = "MIT"
+
+[lib]
+name = "geotagger_lib"
+crate-type = ["rlib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "geotagger"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = { version = "0.10", features = ["serde"] }
+csv = "1"
+quick-xml = "0.37"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+uuid = { version = "1", features = ["serde", "v4", "v5"] }
+walkdir = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

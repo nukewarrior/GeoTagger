@@ -1,0 +1,158 @@
+name: Cross-platform desktop build
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUST_TOOLCHAIN_VERSION: "1.97.1"
+  CARGO_INCREMENTAL: "0"
+  PROJ_NETWORK: "OFF"
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS Apple Silicon
+            os: macos-14
+            target: aarch64-apple-darwin
+            artifact: macos-arm64-adhoc
+          - name: Windows x64
+            os: windows-2025
+            target: x86_64-pc-windows-msvc
+            artifact: windows-x64-unsigned
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Require committed lockfiles
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -f package-lock.json
+          test -f src-tauri/Cargo.lock
+
+      - name: Set up Node.js with npm cache
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Set up pinned Rust target
+        shell: bash
+        run: bash .github/scripts/setup-rust.sh "${{ matrix.target }}"
+
+      - name: Cache Cargo downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ runner.os }}-${{ matrix.target }}-${{ env.RUST_TOOLCHAIN_VERSION }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      - name: Install exactly locked frontend dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Prepare and verify macOS ExifTool
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash .github/scripts/prepare-exiftool.sh \
+            "${GITHUB_WORKSPACE}/src-tauri/resources/exiftool" \
+            "${RUNNER_TEMP}/geotagger-exiftool-fixture.jpg"
+          bash .github/scripts/verify-exiftool.sh \
+            "${GITHUB_WORKSPACE}/src-tauri/resources/exiftool" \
+            "${RUNNER_TEMP}/geotagger-exiftool-fixture.jpg"
+
+      - name: Prepare and verify Windows ExifTool
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE/.github/scripts/prepare-exiftool.ps1" `
+            -Destination "$env:GITHUB_WORKSPACE/src-tauri/resources/exiftool" `
+            -FixturePath "$env:RUNNER_TEMP/geotagger-exiftool-fixture.jpg"
+          & "$env:GITHUB_WORKSPACE/.github/scripts/verify-exiftool.ps1" `
+            -ExifToolDirectory "$env:GITHUB_WORKSPACE/src-tauri/resources/exiftool" `
+            -FixturePath "$env:RUNNER_TEMP/geotagger-exiftool-fixture.jpg"
+
+      - name: Build ad-hoc signed macOS bundles
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
+        run: |
+          set -Eeuo pipefail
+          npm run tauri -- build \
+            --target "${{ matrix.target }}" \
+            --bundles app,dmg \
+            --config .github/tauri.ci.conf.json \
+            -- \
+            --locked
+
+      - name: Build unsigned Windows NSIS bundle
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm run tauri -- build \
+            --target "${{ matrix.target }}" \
+            --bundles nsis \
+            --config .github/tauri.ci.conf.json \
+            -- \
+            --locked
+
+      - name: Read application version
+        id: version
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          version="$(node -p "require('./package.json').version")"
+          echo "value=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Collect macOS bundles and checksums
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash .github/scripts/collect-macos-artifacts.sh \
+            "artifacts/${{ matrix.artifact }}" \
+            "${{ matrix.target }}" \
+            "${{ steps.version.outputs.value }}" \
+            smoke
+
+      - name: Collect Windows bundle and checksums
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE/.github/scripts/collect-windows-artifacts.ps1" `
+            -OutputDirectory "artifacts/${{ matrix.artifact }}" `
+            -Target "${{ matrix.target }}" `
+            -Version "${{ steps.version.outputs.value }}"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact }}-${{ github.sha }}
+          path: artifacts/${{ matrix.artifact }}/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          overwrite: true

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "照片地理标记工作台",
+  "version": "0.1.0",
+  "identifier": "com.geotagger.workbench",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build:web",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "照片地理标记工作台",
+        "width": 1440,
+        "height": 920,
+        "minWidth": 1080,
+        "minHeight": 720,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob: asset: http://asset.localhost https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost https:; worker-src 'self' blob:; font-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "category": "Photography",
+    "targets": "all",
+    "resources": [
+      "resources/exiftool/**/*"
+    ],
+    "shortDescription": "Match photos to GPX tracks and safely write GPS metadata",
+    "longDescription": "A local-first desktop workbench for coordinate normalization, time calibration, deterministic GPX matching, EXIF write planning and verification."
+  }
+}

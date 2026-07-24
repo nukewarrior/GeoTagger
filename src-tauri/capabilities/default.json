@@ -1,0 +1,30 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-capability",
+  "description": "Minimum capability set for the main GeoTagger window.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "dialog:allow-open",
+    "allow-create-project",
+    "allow-open-project",
+    "allow-get-project-snapshot",
+    "allow-get-project-summary",
+    "allow-is-project-dirty",
+    "allow-save-project",
+    "allow-import-tracks",
+    "allow-preview-coordinate-conversion",
+    "allow-scan-photos",
+    "allow-read-photo-metadata",
+    "allow-calculate-matches",
+    "allow-build-write-plan",
+    "allow-execute-write-plan",
+    "allow-cancel-task",
+    "allow-get-task",
+    "allow-list-tasks",
+    "allow-export-report",
+    "allow-get-exiftool-status"
+  ]
+}

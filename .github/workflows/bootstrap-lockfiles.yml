@@ -1,0 +1,147 @@
+name: Bootstrap dependency lockfiles
+
+on:
+  workflow_dispatch:
+    inputs:
+      delivery:
+        description: How the generated lockfiles should be delivered
+        required: true
+        default: pull-request
+        type: choice
+        options:
+          - pull-request
+          - current-branch
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bootstrap-lockfiles-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    name: Generate lockfiles on GitHub
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RUST_TOOLCHAIN_VERSION: "1.97.1"
+    steps:
+      - name: Refuse tag execution
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "${GITHUB_REF_TYPE}" = "branch"
+
+      - name: Check out requested branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.18.0"
+
+      - name: Set up pinned Rust
+        shell: bash
+        run: bash .github/scripts/setup-rust.sh
+
+      - name: Generate lockfiles without running install scripts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
+          test -f package-lock.json
+          test -f src-tauri/Cargo.lock
+
+      - name: Ensure manifests were not rewritten
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git diff --exit-code -- package.json src-tauri/Cargo.toml
+
+      - name: Upload generated lockfiles for the delivery job
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: generated-lockfiles-${{ github.run_id }}
+          path: |
+            package-lock.json
+            src-tauri/Cargo.lock
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+  deliver:
+    name: Deliver generated lockfiles
+    needs: generate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out requested branch without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download generated lockfiles
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: generated-lockfiles-${{ github.run_id }}
+          path: .
+
+      - name: Detect lockfile changes
+        id: changes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -f package-lock.json
+          test -f src-tauri/Cargo.lock
+          if [[ -n "$(git status --porcelain -- package-lock.json src-tauri/Cargo.lock)" ]]; then
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+            echo "Lockfiles are already current." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Commit lockfiles to a pull request branch
+        if: steps.changes.outputs.changed == 'true' && inputs.delivery == 'pull-request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -Eeuo pipefail
+          branch="automation/lockfiles-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "${branch}"
+          git add -- package-lock.json src-tauri/Cargo.lock
+          git commit -m "chore: generate dependency lockfiles in GitHub Actions"
+          gh auth setup-git
+          git push origin "HEAD:refs/heads/${branch}"
+          gh pr create \
+            --base "${TARGET_BRANCH}" \
+            --head "${branch}" \
+            --title "chore: generate dependency lockfiles in GitHub Actions" \
+            --body "Generated entirely on a GitHub-hosted runner. No dependency resolution or installation was performed on the development Mac."
+
+      - name: Commit lockfiles to the current branch
+        if: steps.changes.outputs.changed == 'true' && inputs.delivery == 'current-branch'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- package-lock.json src-tauri/Cargo.lock
+          git commit -m "chore: generate dependency lockfiles in GitHub Actions"
+          gh auth setup-git
+          git push origin "HEAD:refs/heads/${TARGET_BRANCH}"
