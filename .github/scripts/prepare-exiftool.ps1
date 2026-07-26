@@ -36,7 +36,11 @@ try {
     Invoke-WebRequest -Uri $ExifToolUrl -OutFile $Archive -MaximumRedirection 10
 
     $Extracted = Join-Path $WorkDir "extracted"
-    Expand-Archive -LiteralPath $Archive -DestinationPath $Extracted
+    New-Item -ItemType Directory -Path $Extracted | Out-Null
+    & tar.exe -xf $Archive -C $Extracted
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to extract the ExifTool archive"
+    }
 
     $SourceExe = Get-ChildItem -LiteralPath $Extracted -Recurse -File |
         Where-Object { $_.Name -eq "exiftool(-k).exe" } |
