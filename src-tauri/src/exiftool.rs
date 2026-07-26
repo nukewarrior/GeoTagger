@@ -81,6 +81,15 @@ impl ExifTool {
         }
     }
 
+    pub fn unavailable_status(error: AppError) -> ExifToolStatus {
+        ExifToolStatus {
+            available: false,
+            version: None,
+            executable_path: None,
+            error: Some(error),
+        }
+    }
+
     pub fn version(&self) -> AppResult<String> {
         let output = Command::new(&self.executable)
             .arg("-ver")
@@ -385,7 +394,7 @@ fn missing_exiftool() -> AppError {
     AppError::new(
         ErrorCode::ExiftoolNotAvailable,
         "应用资源目录中没有可用的 ExifTool。",
-        "请使用 GitHub Actions 发布的完整安装包；应用不会在本机自动安装 ExifTool。",
+        "请重新下载 GitHub Actions 发布的完整应用；应用不会在本机自动安装 ExifTool。",
         true,
     )
 }
@@ -394,7 +403,7 @@ fn unavailable_to_start(error: std::io::Error) -> AppError {
     AppError::new(
         ErrorCode::ExiftoolNotAvailable,
         format!("无法启动内置 ExifTool：{error}"),
-        "请使用 GitHub Actions 发布的完整安装包，或重新安装应用。",
+        "请重新下载 GitHub Actions 发布的完整应用。",
         true,
     )
 }

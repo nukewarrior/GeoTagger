@@ -32,7 +32,7 @@ jobs:
           - name: Windows x64
             os: windows-2025
             target: x86_64-pc-windows-msvc
-            artifact: windows-x64-unsigned
+            artifact: windows-x64-portable
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
@@ -107,17 +107,47 @@ jobs:
             -- \
             --locked
 
-      - name: Build unsigned Windows NSIS bundle
+      - name: Build unsigned portable Windows executable
         if: runner.os == 'Windows'
         shell: bash
         run: |
           set -Eeuo pipefail
           npm run tauri -- build \
             --target "${{ matrix.target }}" \
-            --bundles nsis \
+            --no-bundle \
             --config .github/tauri.ci.conf.json \
             -- \
             --locked
+
+      - name: Smoke test portable Windows executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PortableDataDirectory = Join-Path $env:RUNNER_TEMP "geotagger-portable-smoke"
+          Remove-Item -LiteralPath $PortableDataDirectory -Recurse -Force -ErrorAction SilentlyContinue
+          $env:GEOTAGGER_PORTABLE_SMOKE = "1"
+          $env:GEOTAGGER_PORTABLE_DATA_DIR = $PortableDataDirectory
+          $Executable = Join-Path $env:GITHUB_WORKSPACE "src-tauri/target/${{ matrix.target }}/release/geotagger.exe"
+          if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) {
+            throw "Portable Windows executable is missing: $Executable"
+          }
+          & $Executable
+          if ($LASTEXITCODE -ne 0) {
+            throw "Portable Windows executable self-check failed with exit code $LASTEXITCODE"
+          }
+          $ExtractedExifTool = Get-ChildItem -LiteralPath $PortableDataDirectory -Filter "exiftool.exe" -File -Recurse |
+            Select-Object -First 1
+          if (-not $ExtractedExifTool) {
+            throw "Portable executable did not extract ExifTool to its application data cache"
+          }
+          $Version = (& $ExtractedExifTool.FullName -ver).Trim()
+          if ($LASTEXITCODE -ne 0 -or $Version -ne "13.59") {
+            throw "Portable executable extracted the wrong ExifTool version: $Version"
+          }
+          if (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $Executable) "exiftool.exe")) {
+            throw "Portable executable must not place ExifTool beside the distributed EXE"
+          }
 
       - name: Read application version
         id: version
@@ -138,7 +168,7 @@ jobs:
             "${{ steps.version.outputs.value }}" \
             smoke
 
-      - name: Collect Windows bundle and checksums
+      - name: Collect portable Windows executable and checksum
         if: runner.os == 'Windows'
         shell: pwsh
         run: |

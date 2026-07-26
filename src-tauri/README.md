@@ -18,9 +18,11 @@ service. The repository policy for this project is intentionally strict:
 - Original photos are read-only. A write plan copies each allowed item to a
   temporary file in the selected output directory, writes and verifies that
   copy, then commits it with an atomic rename.
-- ExifTool is never discovered from `PATH` and is never installed at runtime.
-  It must be packaged beneath the application resource directory. Missing or
-  non-runnable resources return `EXIFTOOL_NOT_AVAILABLE`.
+- ExifTool is never discovered from `PATH` and is never downloaded or installed
+  at runtime. macOS uses the bundled application resource directory; the Windows
+  portable EXE embeds the verified payload and extracts it on first launch into
+  the current user's local application-data cache. Missing or non-runnable
+  resources return `EXIFTOOL_NOT_AVAILABLE`.
 
 ## Commands
 
@@ -70,11 +72,12 @@ overwriteOutput }`.
 
 ## ExifTool bundle layout
 
-The CI release job places a pinned, checksum-verified executable at one of:
+The CI release job prepares a pinned, checksum-verified executable at one of:
 
 - `resources/exiftool/exiftool` for macOS/Linux;
 - `resources/exiftool/exiftool.exe` for Windows.
 
 Any support files required by that platform build stay below the same
-directory. The bundle copies the complete directory into application
-resources.
+directory. macOS copies the complete directory into application resources.
+Windows embeds the complete directory in the distributed EXE, then safely
+extracts it to a version-and-payload-hash-specific local cache on first launch.

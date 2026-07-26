@@ -23,22 +23,26 @@ pub struct AppState {
     project_path: RwLock<Option<PathBuf>>,
     write_plans: RwLock<BTreeMap<Uuid, StoredWritePlan>>,
     pub tasks: TaskManager,
-    pub resource_dir: PathBuf,
+    exiftool_resource_dir: AppResult<PathBuf>,
     dirty: AtomicBool,
     revision: AtomicU64,
 }
 
 impl AppState {
-    pub fn new(resource_dir: PathBuf) -> Self {
+    pub fn new(exiftool_resource_dir: AppResult<PathBuf>) -> Self {
         Self {
             project: RwLock::new(None),
             project_path: RwLock::new(None),
             write_plans: RwLock::new(BTreeMap::new()),
             tasks: TaskManager::default(),
-            resource_dir,
+            exiftool_resource_dir,
             dirty: AtomicBool::new(false),
             revision: AtomicU64::new(0),
         }
+    }
+
+    pub fn exiftool_resource_dir(&self) -> AppResult<PathBuf> {
+        self.exiftool_resource_dir.clone()
     }
 
     pub fn snapshot(&self) -> AppResult<ProjectSnapshot> {

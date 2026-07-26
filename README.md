@@ -16,7 +16,7 @@
 - schemaVersion 1 项目 JSON、原子保存、备份恢复和稳定 UUID。
 - 写入计划、源文件指纹复核、独立输出目录、复制后写入、回读验证和单文件结果。
 - CSV/JSON 报告、任务进度/取消、结构化错误和隐私保护提示。
-- macOS Apple Silicon 与 Windows x64 的 GitHub Actions 构建；ExifTool 13.59 在 runner 中下载并校验后随包分发。
+- macOS Apple Silicon 与 Windows x64 的 GitHub Actions 构建；ExifTool 13.59 在 runner 中下载并校验后随包分发。Windows 下载物为免安装的单一 EXE，首次启动只会在当前用户的本地应用数据目录准备内嵌 ExifTool。
 
 同步点漂移、PMTiles、RAW XMP Sidecar、SQLite、高德显示适配器和 Windows 正式签名不属于当前 MVP。
 
@@ -46,6 +46,10 @@ brew install / pip install / cargo install
 5. CI 全绿后，运行 `Cross-platform desktop build` 获取 macOS ARM64 和 Windows x64 产物。
 
 普通构建不读取签名秘密。正式 macOS 发布只在 `v*` tag 上运行，并要求受保护 Environment 中的 Apple 签名与公证 secrets 全部存在，否则会失败关闭。
+
+## Windows 便携版
+
+Windows 构建产物为 `GeoTagger-<version>-windows-x64.exe`，双击即可运行，不包含安装向导，也不会在 EXE 同目录写入依赖文件。它面向 Windows 10/11，使用系统 Microsoft Edge WebView2 Runtime；若运行时缺失，应用会显示提示并打开官方下载页面。当前 Windows 产物未签名，SmartScreen 警告不代表安装流程失败。
 
 ## 架构
 

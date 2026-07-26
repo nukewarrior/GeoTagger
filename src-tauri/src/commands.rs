@@ -469,7 +469,9 @@ pub async fn read_photo_metadata(
     if photos.len() != selected_ids.len() {
         return Err(AppError::invalid("元数据请求包含未知照片 ID。"));
     }
-    let exiftool = ExifTool::discover(&state.resource_dir)?;
+    let exiftool = state
+        .exiftool_resource_dir()
+        .and_then(|resource_dir| ExifTool::discover(&resource_dir))?;
     let metadata = tauri::async_runtime::spawn_blocking(move || {
         exiftool.version()?;
         exiftool.read_metadata(&photos, &timezone)
@@ -660,7 +662,9 @@ pub fn execute_write_plan(
     request: ExecuteWritePlanRequest,
 ) -> AppResult<TaskAccepted> {
     let (plan, token) = state.write_plan_with_token(request.write_plan_id)?;
-    let exiftool = ExifTool::discover(&state.resource_dir)?;
+    let exiftool = state
+        .exiftool_resource_dir()
+        .and_then(|resource_dir| ExifTool::discover(&resource_dir))?;
     exiftool.version()?;
     let (task_id, cancelled) = state.tasks.start(TaskKind::WriteExif, "write");
     let task_app = app.clone();
@@ -797,7 +801,10 @@ pub async fn export_report(
 
 #[tauri::command]
 pub fn get_exiftool_status(state: State<'_, AppState>) -> ExifToolStatus {
-    ExifTool::status(&state.resource_dir)
+    match state.exiftool_resource_dir() {
+        Ok(resource_dir) => ExifTool::status(&resource_dir),
+        Err(error) => ExifTool::unavailable_status(error),
+    }
 }
 
 fn bounds_for_preview(points: &[ConversionPreviewPoint]) -> AppResult<GeoBounds> {
