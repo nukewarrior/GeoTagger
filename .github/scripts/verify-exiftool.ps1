@@ -52,6 +52,7 @@ try {
     $SourceHashBefore = (Get-FileHash -LiteralPath $SourcePhoto -Algorithm SHA256).Hash
 
     & $ExifToolExe `
+        -charset filename=UTF8 `
         -overwrite_original `
         -n `
         "-GPSLatitude=$ExpectedLatitude" `
@@ -65,6 +66,7 @@ try {
     }
 
     [string[]]$Values = & $ExifToolExe `
+        -charset filename=UTF8 `
         -n `
         -s3 `
         -GPSLatitude `
