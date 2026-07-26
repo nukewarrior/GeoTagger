@@ -9,8 +9,8 @@ use uuid::Uuid;
 use walkdir::WalkDir;
 
 const DEFAULT_EXTENSIONS: &[&str] = &[
-    "jpg", "jpeg", "tif", "tiff", "heic", "heif", "dng", "cr2", "cr3", "nef", "arw",
-    "rw2", "orf", "raf", "png", "webp",
+    "jpg", "jpeg", "tif", "tiff", "heic", "heif", "dng", "cr2", "cr3", "nef", "arw", "rw2", "orf",
+    "raf", "png", "webp",
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -74,10 +74,7 @@ where
             }),
         }
     }
-    paths.sort_by(|left, right| {
-        left.to_string_lossy()
-            .cmp(&right.to_string_lossy())
-    });
+    paths.sort_by(|left, right| left.to_string_lossy().cmp(&right.to_string_lossy()));
 
     let total = paths.len() as u64;
     let mut photos = Vec::with_capacity(paths.len());

@@ -1,6 +1,4 @@
-use crate::domain::{
-    DiagnosticSummary, MatchStatus, ProjectSnapshot, ReportRecord, WriteItemStatus,
-};
+use crate::domain::{DiagnosticSummary, MatchStatus, ProjectSnapshot, ReportRecord};
 use crate::error::{AppError, AppResult};
 use crate::fs_utils::{normalize_absolute, write_atomic};
 use chrono::Utc;
@@ -94,19 +92,15 @@ pub fn export_report(
                     "reason",
                     "latestWriteStatus",
                 ])
-                .map_err(|error| {
-                    AppError::internal(format!("CSV 报告表头生成失败：{error}"))
-                })?;
+                .map_err(|error| AppError::internal(format!("CSV 报告表头生成失败：{error}")))?;
             for record in &records {
-                writer.serialize(record).map_err(|error| {
-                    AppError::internal(format!("CSV 报告序列化失败：{error}"))
-                })?;
+                writer
+                    .serialize(record)
+                    .map_err(|error| AppError::internal(format!("CSV 报告序列化失败：{error}")))?;
             }
-            writer
-                .into_inner()
-                .map_err(|error| {
-                    AppError::internal(format!("CSV 报告生成失败：{}", error.error()))
-                })?
+            writer.into_inner().map_err(|error| {
+                AppError::internal(format!("CSV 报告生成失败：{}", error.error()))
+            })?
         }
     };
     let target = normalize_absolute(Path::new(&request.target_path))?;

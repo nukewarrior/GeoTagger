@@ -85,8 +85,8 @@ pub fn gcj02_to_wgs84(point: GeoPoint) -> GeoPoint {
 }
 
 pub fn gcj02_to_bd09(point: GeoPoint) -> GeoPoint {
-    let radius = (point.lon * point.lon + point.lat * point.lat).sqrt()
-        + 0.00002 * (point.lat * X_PI).sin();
+    let radius =
+        (point.lon * point.lon + point.lat * point.lat).sqrt() + 0.00002 * (point.lat * X_PI).sin();
     let angle = point.lat.atan2(point.lon) + 0.000003 * (point.lon * X_PI).cos();
     GeoPoint {
         lon: radius * angle.cos() + 0.0065,
@@ -115,31 +115,24 @@ fn gcj_delta(point: GeoPoint) -> (f64, f64) {
     let magic = 1.0 - EARTH_ECCENTRICITY_SQUARED * magic_sine * magic_sine;
     let sqrt_magic = magic.sqrt();
     delta_lat = (delta_lat * 180.0)
-        / ((EARTH_SEMI_MAJOR * (1.0 - EARTH_ECCENTRICITY_SQUARED))
-            / (magic * sqrt_magic)
-            * PI);
-    delta_lon =
-        (delta_lon * 180.0) / (EARTH_SEMI_MAJOR / sqrt_magic * rad_lat.cos() * PI);
+        / ((EARTH_SEMI_MAJOR * (1.0 - EARTH_ECCENTRICITY_SQUARED)) / (magic * sqrt_magic) * PI);
+    delta_lon = (delta_lon * 180.0) / (EARTH_SEMI_MAJOR / sqrt_magic * rad_lat.cos() * PI);
     (delta_lat, delta_lon)
 }
 
 fn transform_latitude(x: f64, y: f64) -> f64 {
-    let mut result =
-        -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * x.abs().sqrt();
+    let mut result = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * x.abs().sqrt();
     result += (20.0 * (6.0 * x * PI).sin() + 20.0 * (2.0 * x * PI).sin()) * 2.0 / 3.0;
     result += (20.0 * (y * PI).sin() + 40.0 * (y / 3.0 * PI).sin()) * 2.0 / 3.0;
-    result +=
-        (160.0 * (y / 12.0 * PI).sin() + 320.0 * (y * PI / 30.0).sin()) * 2.0 / 3.0;
+    result += (160.0 * (y / 12.0 * PI).sin() + 320.0 * (y * PI / 30.0).sin()) * 2.0 / 3.0;
     result
 }
 
 fn transform_longitude(x: f64, y: f64) -> f64 {
-    let mut result =
-        300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * x.abs().sqrt();
+    let mut result = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * x.abs().sqrt();
     result += (20.0 * (6.0 * x * PI).sin() + 20.0 * (2.0 * x * PI).sin()) * 2.0 / 3.0;
     result += (20.0 * (x * PI).sin() + 40.0 * (x / 3.0 * PI).sin()) * 2.0 / 3.0;
-    result +=
-        (150.0 * (x / 12.0 * PI).sin() + 300.0 * (x / 30.0 * PI).sin()) * 2.0 / 3.0;
+    result += (150.0 * (x / 12.0 * PI).sin() + 300.0 * (x / 30.0 * PI).sin()) * 2.0 / 3.0;
     result
 }
 
@@ -153,8 +146,8 @@ pub fn haversine_meters(first: GeoPoint, second: GeoPoint) -> f64 {
     let lat2 = second.lat.to_radians();
     let delta_lat = (second.lat - first.lat).to_radians();
     let delta_lon = (second.lon - first.lon).to_radians();
-    let haversine = (delta_lat / 2.0).sin().powi(2)
-        + lat1.cos() * lat2.cos() * (delta_lon / 2.0).sin().powi(2);
+    let haversine =
+        (delta_lat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (delta_lon / 2.0).sin().powi(2);
     2.0 * earth_radius_meters * haversine.sqrt().asin()
 }
 
@@ -198,4 +191,3 @@ mod tests {
         assert!((restored.lon - gcj.lon).abs() < 0.000_01);
     }
 }
-

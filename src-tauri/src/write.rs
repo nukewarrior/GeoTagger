@@ -40,9 +40,7 @@ pub fn build_write_plan(
         .map(|photo| (photo.id, photo))
         .collect();
     if photo_by_id.len() != selected.len() {
-        return Err(AppError::invalid(
-            "写入选择中包含未在当前项目找到的照片。",
-        ));
+        return Err(AppError::invalid("写入选择中包含未在当前项目找到的照片。"));
     }
     let match_by_photo: BTreeMap<Uuid, &PhotoMatch> = matches
         .iter()
@@ -356,7 +354,13 @@ fn copy_write_verify(
                 )
             })?;
             exiftool.write_gps(&temporary, gps, options.include_altitude)?;
-            verify_written_gps(exiftool, item.photo_id, &temporary, gps, options.include_altitude)?;
+            verify_written_gps(
+                exiftool,
+                item.photo_id,
+                &temporary,
+                gps,
+                options.include_altitude,
+            )?;
         } else if item.action == WritePlanItemAction::PreserveExistingGps {
             let source_fingerprint = fingerprint(source)?;
             let copied_fingerprint = fingerprint(&temporary)?;
@@ -590,8 +594,10 @@ mod tests {
             metadata_error: None,
         };
         let matched = matched_fixture(photo_id);
-        let mut options = WriteOptions::default();
-        options.preserve_relative_paths = false;
+        let options = WriteOptions {
+            preserve_relative_paths: false,
+            ..WriteOptions::default()
+        };
         let result = build_write_plan(
             &[photo],
             &[matched],

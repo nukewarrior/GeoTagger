@@ -130,7 +130,10 @@ mod tests {
         assert!(manager.cancel(id));
         assert!(flag.load(Ordering::Relaxed));
         manager.finish(id, "cancelled");
-        assert_eq!(manager.get(id).expect("record").status, TaskStatus::Cancelled);
+        assert_eq!(
+            manager.get(id).expect("record").status,
+            TaskStatus::Cancelled
+        );
         assert!(!manager.cancel(id));
     }
 }

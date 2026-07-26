@@ -59,8 +59,7 @@ pub fn save_project(path: &Path, snapshot: &mut ProjectSnapshot) -> AppResult<Sa
 
 pub fn open_project(path: &Path) -> AppResult<(PathBuf, ProjectSnapshot)> {
     let canonical = canonical_file(path)?;
-    let bytes =
-        fs::read(&canonical).map_err(|error| AppError::io("读取项目文件失败", error))?;
+    let bytes = fs::read(&canonical).map_err(|error| AppError::io("读取项目文件失败", error))?;
     let value: Value = serde_json::from_slice(&bytes)
         .map_err(|error| AppError::project_invalid(format!("项目 JSON 损坏：{error}")))?;
     let migrated = migrate_to_current(value)?;
@@ -83,7 +82,7 @@ pub fn validate_snapshot(snapshot: &ProjectSnapshot) -> AppResult<()> {
     Ok(())
 }
 
-fn migrate_to_current(mut value: Value) -> AppResult<Value> {
+fn migrate_to_current(value: Value) -> AppResult<Value> {
     let version = value
         .get("schemaVersion")
         .or_else(|| value.get("schema_version"))
@@ -95,27 +94,14 @@ fn migrate_to_current(mut value: Value) -> AppResult<Value> {
         )));
     }
 
-    // Schema v1 is the first public schema. The loop is intentionally kept as
-    // the single migration entry point so future versions cannot bypass
-    // ordered migration.
-    while version_of(&value)? < PROJECT_SCHEMA_VERSION as u64 {
-        value = match version_of(&value)? {
-            unsupported => {
-                return Err(AppError::project_invalid(format!(
-                    "无法从项目版本 {unsupported} 迁移。"
-                )))
-            }
-        };
+    // Schema v1 is the first public schema. Add explicit ordered migrations
+    // here when a later schema is introduced.
+    if version < PROJECT_SCHEMA_VERSION as u64 {
+        return Err(AppError::project_invalid(format!(
+            "无法从项目版本 {version} 迁移。"
+        )));
     }
     Ok(value)
-}
-
-fn version_of(value: &Value) -> AppResult<u64> {
-    value
-        .get("schemaVersion")
-        .or_else(|| value.get("schema_version"))
-        .and_then(Value::as_u64)
-        .ok_or_else(|| AppError::project_invalid("项目缺少 schemaVersion。"))
 }
 
 pub fn summary(path: &Path, snapshot: &ProjectSnapshot) -> ProjectSummary {

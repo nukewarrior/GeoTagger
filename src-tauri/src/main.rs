@@ -3,4 +3,3 @@
 fn main() {
     geotagger_lib::run();
 }
-

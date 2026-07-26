@@ -32,6 +32,9 @@
     "resources": [
       "resources/exiftool/**/*"
     ],
+    "icon": [
+      "icons/icon.png"
+    ],
     "shortDescription": "Match photos to GPX tracks and safely write GPS metadata",
     "longDescription": "A local-first desktop workbench for coordinate normalization, time calibration, deterministic GPX matching, EXIF write planning and verification."
   }

@@ -1,7 +1,5 @@
 use crate::coordinate::haversine_meters;
-use crate::domain::{
-    Calibration, MatchStatus, Photo, PhotoMatch, Track, TrackPoint, TrackSegment,
-};
+use crate::domain::{Calibration, MatchStatus, Photo, PhotoMatch, Track, TrackPoint, TrackSegment};
 use crate::error::{AppError, AppResult, ErrorCode};
 use chrono::{DateTime, Duration, Utc};
 use std::cmp::Ordering;
@@ -66,8 +64,7 @@ where
         }
         let result = match photo.capture_utc {
             Some(capture_utc) => {
-                let corrected =
-                    capture_utc + Duration::milliseconds(calibration.fixed_offset_ms);
+                let corrected = capture_utc + Duration::milliseconds(calibration.fixed_offset_ms);
                 match_photo(photo, corrected, &selected_tracks)
             }
             None => PhotoMatch {
@@ -286,10 +283,7 @@ fn confidence(candidate: &Candidate<'_>) -> (f64, MatchStatus, f64) {
     } else {
         (0.45 - ((gap - 60.0) / 900.0) * 0.20).max(0.20)
     };
-    let distance = haversine_meters(
-        candidate.previous.normalized,
-        candidate.next.normalized,
-    );
+    let distance = haversine_meters(candidate.previous.normalized, candidate.next.normalized);
     let speed = distance / gap;
     if speed > 120.0 {
         score *= 0.35;
@@ -319,8 +313,7 @@ fn confidence(candidate: &Candidate<'_>) -> (f64, MatchStatus, f64) {
 
     // This value is deliberately heuristic. UI copy must label it as an
     // estimate rather than a measurement accuracy guarantee.
-    let estimated_error =
-        (speed * gap.min(60.0) * 0.25 + hdop.unwrap_or(4.0) * 3.0).max(5.0);
+    let estimated_error = (speed * gap.min(60.0) * 0.25 + hdop.unwrap_or(4.0) * 3.0).max(5.0);
     (score, status_for_score(score), estimated_error)
 }
 
@@ -342,8 +335,8 @@ fn interpolate(first: f64, second: f64, ratio: f64) -> f64 {
 mod tests {
     use super::*;
     use crate::domain::{
-        CoordinateSystem, FileFingerprint, GeoBounds, GeoPoint, OriginalPoint,
-        PhotoMetadataStatus, TimezoneSource, TrackStatistics,
+        CoordinateSystem, FileFingerprint, GeoBounds, GeoPoint, OriginalPoint, PhotoMetadataStatus,
+        TimezoneSource, TrackStatistics,
     };
 
     fn time(value: &str) -> DateTime<Utc> {
@@ -458,8 +451,7 @@ mod tests {
     fn reports_out_of_range_and_missing_time() {
         let track = track();
         let outside = photo(Some("2023-12-31T23:00:00Z"));
-        let outside_match =
-            match_photo(&outside, outside.capture_utc.expect("capture"), &[&track]);
+        let outside_match = match_photo(&outside, outside.capture_utc.expect("capture"), &[&track]);
         assert_eq!(outside_match.status, MatchStatus::OutOfRange);
 
         let missing = photo(None);

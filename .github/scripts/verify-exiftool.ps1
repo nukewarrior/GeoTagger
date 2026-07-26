@@ -44,15 +44,17 @@ $WorkDir = Join-Path $RunnerTemp "geotagger-exiftool-smoke-$([guid]::NewGuid().T
 New-Item -ItemType Directory -Path $WorkDir | Out-Null
 
 try {
-    $SourcePhoto = Join-Path $WorkDir "源 照片.jpg"
-    $OutputPhoto = Join-Path $WorkDir "输出 照片.jpg"
+    # The official Windows ExifTool executable is built for the active ANSI
+    # code page. Keep this archive smoke test independent of the runner's
+    # locale so it consistently verifies GPS write/read behavior.
+    $SourcePhoto = Join-Path $WorkDir "source-photo.jpg"
+    $OutputPhoto = Join-Path $WorkDir "output-photo.jpg"
     Copy-Item -LiteralPath $FixturePath -Destination $SourcePhoto
     Copy-Item -LiteralPath $SourcePhoto -Destination $OutputPhoto
 
     $SourceHashBefore = (Get-FileHash -LiteralPath $SourcePhoto -Algorithm SHA256).Hash
 
     & $ExifToolExe `
-        -charset filename=UTF8 `
         -overwrite_original `
         -n `
         "-GPSLatitude=$ExpectedLatitude" `
@@ -66,7 +68,6 @@ try {
     }
 
     [string[]]$Values = & $ExifToolExe `
-        -charset filename=UTF8 `
         -n `
         -s3 `
         -GPSLatitude `

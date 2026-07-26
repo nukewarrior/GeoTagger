@@ -182,9 +182,7 @@ pub fn save_project(
         validate_snapshot(&incoming)?;
         let (current, token) = state.snapshot_with_token()?;
         if current.project.id != incoming.project.id {
-            return Err(AppError::project_invalid(
-                "保存快照与当前项目 ID 不一致。",
-            ));
+            return Err(AppError::project_invalid("保存快照与当前项目 ID 不一致。"));
         }
         if current.project.updated_at != incoming.project.updated_at {
             return Err(AppError::new(
@@ -267,14 +265,13 @@ pub async fn import_tracks(
     .await
     .map_err(|error| AppError::internal(format!("轨迹任务异常终止：{error}")))??;
 
-    let warning_count = imported
-        .iter()
-        .map(|track| track.warnings.len())
-        .sum();
+    let warning_count = imported.iter().map(|track| track.warnings.len()).sum();
     let returned = imported.clone();
     state.mutate_project_if_current(token, |project| {
         let imported_ids: BTreeSet<Uuid> = imported.iter().map(|track| track.id).collect();
-        project.tracks.retain(|track| !imported_ids.contains(&track.id));
+        project
+            .tracks
+            .retain(|track| !imported_ids.contains(&track.id));
         project.tracks.extend(imported);
         project.tracks.sort_by_key(|track| track.id);
         project.project.updated_at = Utc::now();
@@ -323,11 +320,7 @@ pub fn preview_coordinate_conversion(
         };
         points.push(ConversionPreviewPoint {
             original,
-            normalized: convert(
-                original,
-                request.source_crs,
-                CoordinateSystem::Wgs84,
-            )?,
+            normalized: convert(original, request.source_crs, CoordinateSystem::Wgs84)?,
         });
     }
     let bounds = bounds_for_preview(&points)?;
@@ -443,13 +436,7 @@ fn finish_photo_scan(
                 "warningCount": warning_count,
                 "rootDirectory": result.root_directory,
             });
-            let _ = app.emit(
-                "task://finished",
-                TaskFinishedEvent {
-                    task_id,
-                    summary,
-                },
-            );
+            let _ = app.emit("task://finished", TaskFinishedEvent { task_id, summary });
             emit_dirty(app, true);
         }
         Err(error) => {
@@ -542,17 +529,13 @@ pub fn calculate_matches(
                 true,
             )
         })?;
-    if !request.calibration.sync_points.is_empty()
-        || request.calibration.drift_model.is_some()
-    {
+    if !request.calibration.sync_points.is_empty() || request.calibration.drift_model.is_some() {
         return Err(AppError::invalid(
             "MVP-1 仅支持固定时间偏差；同步点和漂移模型将在后续版本启用。",
         ));
     }
     let (snapshot, token) = state.snapshot_with_token()?;
-    let (task_id, cancelled) = state
-        .tasks
-        .start(TaskKind::MatchCalculation, "matching");
+    let (task_id, cancelled) = state.tasks.start(TaskKind::MatchCalculation, "matching");
     let task_app = app.clone();
     tauri::async_runtime::spawn(async move {
         let progress_app = task_app.clone();
@@ -567,13 +550,9 @@ pub fn calculate_matches(
                 &cancelled,
                 |completed, total, message| {
                     if let Some(state) = progress_app.try_state::<AppState>() {
-                        state.tasks.update(
-                            task_id,
-                            "matching",
-                            completed,
-                            total,
-                            message,
-                        );
+                        state
+                            .tasks
+                            .update(task_id, "matching", completed, total, message);
                     }
                     let _ = progress_app.emit(
                         "task://progress",
@@ -622,8 +601,7 @@ fn finish_matching(
                         == crate::domain::MatchStatus::MatchedHigh
                 })
                 .count();
-            let changed_ids: BTreeSet<Uuid> =
-                matches.iter().map(|item| item.photo_id).collect();
+            let changed_ids: BTreeSet<Uuid> = matches.iter().map(|item| item.photo_id).collect();
             let mutation = state.mutate_project_if_current(token, |project| {
                 project
                     .matches
@@ -689,28 +667,23 @@ pub fn execute_write_plan(
     tauri::async_runtime::spawn(async move {
         let progress_app = task_app.clone();
         let result = tauri::async_runtime::spawn_blocking(move || {
-            execute_write_plan_core(
-                &plan,
-                &exiftool,
-                &cancelled,
-                |completed, total, message| {
-                    if let Some(state) = progress_app.try_state::<AppState>() {
-                        state
-                            .tasks
-                            .update(task_id, "write", completed, total, message);
-                    }
-                    let _ = progress_app.emit(
-                        "task://progress",
-                        TaskProgressEvent {
-                            task_id,
-                            stage: "write".to_owned(),
-                            completed,
-                            total,
-                            message: message.to_owned(),
-                        },
-                    );
-                },
-            )
+            execute_write_plan_core(&plan, &exiftool, &cancelled, |completed, total, message| {
+                if let Some(state) = progress_app.try_state::<AppState>() {
+                    state
+                        .tasks
+                        .update(task_id, "write", completed, total, message);
+                }
+                let _ = progress_app.emit(
+                    "task://progress",
+                    TaskProgressEvent {
+                        task_id,
+                        stage: "write".to_owned(),
+                        completed,
+                        total,
+                        message: message.to_owned(),
+                    },
+                );
+            })
         })
         .await
         .map_err(|error| AppError::internal(format!("写入任务异常终止：{error}")));
@@ -852,9 +825,7 @@ fn emit_dirty(app: &AppHandle, changed: bool) {
 
 fn require_absolute_path(value: &str, label: &str) -> AppResult<()> {
     if value.trim().is_empty() || !Path::new(value).is_absolute() {
-        return Err(AppError::invalid(format!(
-            "{label}必须是非空绝对路径。"
-        )));
+        return Err(AppError::invalid(format!("{label}必须是非空绝对路径。")));
     }
     Ok(())
 }

@@ -1,6 +1,4 @@
-use crate::domain::{
-    ExistingGps, ExifToolStatus, Photo, PhotoMetadata, TimezoneSource,
-};
+use crate::domain::{ExifToolStatus, ExistingGps, Photo, PhotoMetadata, TimezoneSource};
 use crate::error::{AppError, AppResult, ErrorCode};
 use chrono::{DateTime, LocalResult, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Tz;
@@ -92,10 +90,7 @@ impl ExifTool {
         if !output.status.success() {
             return Err(AppError::new(
                 ErrorCode::ExiftoolNotAvailable,
-                format!(
-                    "ExifTool 版本检查失败：{}",
-                    redacted_stderr(&output.stderr)
-                ),
+                format!("ExifTool 版本检查失败：{}", redacted_stderr(&output.stderr)),
                 "请重新安装由官方发布流程生成的应用包。",
                 true,
             ));
@@ -112,11 +107,7 @@ impl ExifTool {
         Ok(version)
     }
 
-    pub fn read_metadata(
-        &self,
-        photos: &[Photo],
-        timezone: &str,
-    ) -> AppResult<Vec<PhotoMetadata>> {
+    pub fn read_metadata(&self, photos: &[Photo], timezone: &str) -> AppResult<Vec<PhotoMetadata>> {
         let parsed_timezone = timezone.parse::<Tz>().map_err(|_| {
             AppError::new(
                 ErrorCode::PhotoTimeAmbiguous,
@@ -132,11 +123,7 @@ impl ExifTool {
         Ok(metadata)
     }
 
-    fn read_metadata_batch(
-        &self,
-        photos: &[Photo],
-        timezone: Tz,
-    ) -> AppResult<Vec<PhotoMetadata>> {
+    fn read_metadata_batch(&self, photos: &[Photo], timezone: Tz) -> AppResult<Vec<PhotoMetadata>> {
         let mut command = Command::new(&self.executable);
         command
             .arg("-json")
@@ -161,10 +148,7 @@ impl ExifTool {
         if output.stdout.is_empty() {
             return Err(AppError::new(
                 ErrorCode::PhotoMetadataFailed,
-                format!(
-                    "ExifTool 未返回 JSON：{}",
-                    redacted_stderr(&output.stderr)
-                ),
+                format!("ExifTool 未返回 JSON：{}", redacted_stderr(&output.stderr)),
                 "请确认照片格式受支持且文件可读。",
                 true,
             ));
@@ -308,11 +292,9 @@ fn metadata_from_object(photo: &Photo, object: &Map<String, Value>, timezone: Tz
             value
         }
     });
-    let existing_gps = latitude.zip(longitude).map(|(lat, lon)| ExistingGps {
-        lat,
-        lon,
-        altitude,
-    });
+    let existing_gps = latitude
+        .zip(longitude)
+        .map(|(lat, lon)| ExistingGps { lat, lon, altitude });
     let exiftool_error = string_value(object, "Error");
     let error = exiftool_error.or(time_error);
 
@@ -347,10 +329,7 @@ fn parse_capture_time(
     }
     if let Some(offset) = separate_offset {
         let combined = format!("{value}{offset}");
-        for format in [
-            "%Y:%m:%d %H:%M:%S%.f%:z",
-            "%Y:%m:%d %H:%M:%S%.f%z",
-        ] {
+        for format in ["%Y:%m:%d %H:%M:%S%.f%:z", "%Y:%m:%d %H:%M:%S%.f%z"] {
             if let Ok(parsed) = DateTime::parse_from_str(&combined, format) {
                 return Ok((parsed.with_timezone(&Utc), TimezoneSource::MetadataOffset));
             }
@@ -366,10 +345,9 @@ fn parse_capture_time(
     .find_map(|format| NaiveDateTime::parse_from_str(value, format).ok())
     .ok_or_else(|| format!("无法解析拍摄时间：{value}"))?;
     match timezone.from_local_datetime(&naive) {
-        LocalResult::Single(datetime) => Ok((
-            datetime.with_timezone(&Utc),
-            TimezoneSource::ProjectDefault,
-        )),
+        LocalResult::Single(datetime) => {
+            Ok((datetime.with_timezone(&Utc), TimezoneSource::ProjectDefault))
+        }
         LocalResult::Ambiguous(_, _) => Err(format!(
             "拍摄时间 {value} 在时区 {timezone} 的夏令时切换中有两个可能值。"
         )),
@@ -440,8 +418,7 @@ mod tests {
     fn parses_offset_time_before_project_timezone() {
         let timezone = "Asia/Shanghai".parse::<Tz>().expect("timezone");
         let (parsed, source) =
-            parse_capture_time("2024:10:03 09:12:45.123", Some("+08:00"), timezone)
-                .expect("parse");
+            parse_capture_time("2024:10:03 09:12:45.123", Some("+08:00"), timezone).expect("parse");
         assert_eq!(parsed.to_rfc3339(), "2024-10-03T01:12:45.123+00:00");
         assert_eq!(source, TimezoneSource::MetadataOffset);
     }

@@ -24,16 +24,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            let resource_dir = app
-                .path()
-                .resource_dir()
-                .unwrap_or_else(|_| {
-                    std::env::current_exe()
-                        .ok()
-                        .and_then(|path| path.parent().map(std::path::Path::to_path_buf))
-                        .unwrap_or_else(|| std::path::PathBuf::from("."))
-                        .join("__missing_resources__")
-                });
+            let resource_dir = app.path().resource_dir().unwrap_or_else(|_| {
+                std::env::current_exe()
+                    .ok()
+                    .and_then(|path| path.parent().map(std::path::Path::to_path_buf))
+                    .unwrap_or_else(|| std::path::PathBuf::from("."))
+                    .join("__missing_resources__")
+            });
             app.manage(AppState::new(resource_dir));
             Ok(())
         })

@@ -130,7 +130,7 @@ pub fn parse_gpx_bytes(
             },
             Ok(Event::Text(text)) => {
                 let value = text
-                    .decode()
+                    .unescape()
                     .map_err(|error| track_parse_error(format!("GPX 文本编码无效：{error}")))?
                     .trim()
                     .to_owned();
@@ -160,18 +160,18 @@ pub fn parse_gpx_bytes(
                 b"trk" => inside_track = false,
                 b"name" | b"time" | b"ele" | b"hdop" => active_field = None,
                 b"trkpt" => {
-                    let point = current_point.take().ok_or_else(|| {
-                        track_parse_error("GPX 轨迹点结束标签没有对应开始标签。")
-                    })?;
-                    let segment = current_segment.as_mut().ok_or_else(|| {
-                        track_parse_error("GPX trkpt 必须位于 trkseg 内。")
-                    })?;
+                    let point = current_point
+                        .take()
+                        .ok_or_else(|| track_parse_error("GPX 轨迹点结束标签没有对应开始标签。"))?;
+                    let segment = current_segment
+                        .as_mut()
+                        .ok_or_else(|| track_parse_error("GPX trkpt 必须位于 trkseg 内。"))?;
                     segment.push(point);
                 }
                 b"trkseg" => {
-                    let segment = current_segment.take().ok_or_else(|| {
-                        track_parse_error("GPX 分段结束标签没有对应开始标签。")
-                    })?;
+                    let segment = current_segment
+                        .take()
+                        .ok_or_else(|| track_parse_error("GPX 分段结束标签没有对应开始标签。"))?;
                     if !segment.is_empty() {
                         segments.push(segment);
                     }
@@ -394,7 +394,9 @@ fn build_track(input: TrackBuildInput) -> AppResult<Track> {
 
     Ok(Track {
         id,
-        name: track_name.filter(|value| !value.trim().is_empty()).unwrap_or(fallback_name),
+        name: track_name
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or(fallback_name),
         source_path,
         relative_path,
         hash_sha256,
@@ -469,8 +471,7 @@ mod tests {
 
     #[test]
     fn rejects_missing_time() {
-        let missing_time =
-            br#"<gpx><trk><trkseg><trkpt lat="1" lon="2"/></trkseg></trk></gpx>"#;
+        let missing_time = br#"<gpx><trk><trkseg><trkpt lat="1" lon="2"/></trkseg></trk></gpx>"#;
         let error = parse_gpx_bytes(
             missing_time,
             "missing.gpx".to_owned(),
