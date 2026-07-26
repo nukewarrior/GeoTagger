@@ -146,12 +146,7 @@ fn validate_installation(destination: &Path) -> bool {
         return false;
     }
     let executable = destination.join("exiftool").join("exiftool.exe");
-    if !executable.is_file()
-        || !destination
-            .join("exiftool")
-            .join("exiftool_files")
-            .is_dir()
-    {
+    if !executable.is_file() || !destination.join("exiftool").join("exiftool_files").is_dir() {
         return false;
     }
     if !payload_files_match(destination) {
@@ -163,9 +158,7 @@ fn validate_installation(destination: &Path) -> bool {
         .output()
         .ok()
         .filter(|output| output.status.success())
-        .map(|output| {
-            String::from_utf8_lossy(&output.stdout).trim() == embedded::EXIFTOOL_VERSION
-        })
+        .map(|output| String::from_utf8_lossy(&output.stdout).trim() == embedded::EXIFTOOL_VERSION)
         .unwrap_or(false)
 }
 
