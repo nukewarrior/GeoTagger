@@ -10,7 +10,7 @@ $ProgressPreference = "SilentlyContinue"
 
 $ExifToolVersion = "13.59"
 $ExifToolSha256 = "44b512b25af500724ba579d0a53c8fc5851628b692dd5e5d94ae4a15c2cba9ec"
-$ExifToolUrl = "https://sourceforge.net/projects/exiftool/files/exiftool-$($ExifToolVersion)_64.zip/download"
+$ExifToolUrl = "https://zenlayer.dl.sourceforge.net/project/exiftool/exiftool-$($ExifToolVersion)_64.zip"
 $Workspace = if ($env:GITHUB_WORKSPACE) { $env:GITHUB_WORKSPACE } else { (Get-Location).Path }
 $RunnerTemp = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [System.IO.Path]::GetTempPath() }
 

@@ -599,7 +599,7 @@ export async function executeWritePlan(
     },
   );
   await waitForTask(accepted.taskId);
-  const snapshot = await currentSnapshot();
+  await currentSnapshot();
   const rawJob = rawSnapshot?.writeHistory.at(-1);
   if (!rawJob) throw new Error("WRITE_JOB_MISSING");
   return {

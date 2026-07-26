@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
-import maplibregl, { type GeoJSONSource, type Map } from "maplibre-gl";
+import {
+  GeoJSONSource,
+  LngLatBounds,
+  Map,
+  NavigationControl,
+} from "maplibre-gl";
 
 import IconGlyph from "@/components/IconGlyph.vue";
 import { useWorkspaceStore } from "@/stores/workspace";
@@ -100,7 +105,7 @@ function updateSources(): void {
 
 function fitTrack(): void {
   if (!map || trackPoints.value.length === 0) return;
-  const bounds = new maplibregl.LngLatBounds();
+  const bounds = new LngLatBounds();
   for (const point of trackPoints.value) {
     bounds.extend([point.normalized.lon, point.normalized.lat]);
   }
@@ -136,7 +141,7 @@ async function initializeMap(): Promise<void> {
   if (!container.value) return;
 
   try {
-    map = new maplibregl.Map({
+    map = new Map({
       container: container.value,
       center: [86.87, 48.69],
       zoom: 8.3,
@@ -154,12 +159,12 @@ async function initializeMap(): Promise<void> {
       },
     });
 
-    map.addControl(
-      new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }),
+    map!.addControl(
+      new NavigationControl({ showCompass: true, visualizePitch: true }),
       "bottom-right",
     );
 
-    map.on("load", () => {
+    map!.on("load", () => {
       if (!map) return;
       map.addSource("track", {
         type: "geojson",
@@ -260,7 +265,7 @@ async function initializeMap(): Promise<void> {
       fitTrack();
     });
 
-    map.on("error", () => {
+    map!.on("error", () => {
       store.mapBaseAvailable = false;
     });
   } catch {

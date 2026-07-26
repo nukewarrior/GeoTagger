@@ -15,7 +15,6 @@ import type {
   AppError,
   AppView,
   MatchStatus,
-  PhotoMatch,
   ProjectSnapshot,
   TaskInfo,
   WritePlan,
