@@ -135,8 +135,8 @@ jobs:
           if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) {
             throw "Portable Windows executable is missing: $Executable"
           }
-          & $Executable
-          $SmokeExitCode = $LASTEXITCODE
+          $SmokeProcess = Start-Process -FilePath $Executable -Wait -PassThru
+          $SmokeExitCode = $SmokeProcess.ExitCode
           if (Test-Path -LiteralPath $SmokeLog -PathType Leaf) {
             Get-Content -LiteralPath $SmokeLog
           }
