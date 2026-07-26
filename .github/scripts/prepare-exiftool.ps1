@@ -55,7 +55,7 @@ try {
     $PayloadManifest = Get-ChildItem -LiteralPath $PayloadRoot -Recurse -File |
         Sort-Object FullName |
         ForEach-Object {
-            $RelativePath = [System.IO.Path]::GetRelativePath($PayloadRoot, $_.FullName).Replace("\", "/")
+            $RelativePath = $_.FullName.Substring($PayloadRoot.Length + 1).Replace("\", "/")
             "$RelativePath $((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())"
         }
     $PayloadManifestPath = Join-Path $WorkDir "payload.sha256"
