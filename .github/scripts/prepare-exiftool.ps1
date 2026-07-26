@@ -9,8 +9,8 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 $ExifToolVersion = "13.59"
-$ExifToolSha256 = "44b512b25af500724ba579d0a53c8fc5851628b692dd5e5d94ae4a15c2cba9ec"
-$ExifToolUrl = "https://zenlayer.dl.sourceforge.net/project/exiftool/exiftool-$($ExifToolVersion)_64.zip"
+$ExifToolPayloadSha256 = "8ca3846bed2cf8dc9bcd90ebb118f987f015ddfbe76f46c973b315a71e03ecdb"
+$ExifToolUrl = "https://sourceforge.net/projects/exiftool/files/exiftool-$($ExifToolVersion)_64.zip/download"
 $Workspace = if ($env:GITHUB_WORKSPACE) { $env:GITHUB_WORKSPACE } else { (Get-Location).Path }
 $RunnerTemp = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [System.IO.Path]::GetTempPath() }
 
@@ -36,11 +36,6 @@ try {
     $Archive = Join-Path $WorkDir "exiftool-$($ExifToolVersion)_64.zip"
     Invoke-WebRequest -Uri $ExifToolUrl -OutFile $Archive -MaximumRedirection 10
 
-    $ActualHash = (Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($ActualHash -ne $ExifToolSha256) {
-        throw "ExifTool archive checksum mismatch. Expected $ExifToolSha256, got $ActualHash"
-    }
-
     $Extracted = Join-Path $WorkDir "extracted"
     Expand-Archive -LiteralPath $Archive -DestinationPath $Extracted
 
@@ -54,6 +49,21 @@ try {
     $SourceFiles = Join-Path $SourceExe.Directory.FullName "exiftool_files"
     if (-not (Test-Path -LiteralPath $SourceFiles -PathType Container)) {
         throw "The required exiftool_files directory was not found"
+    }
+
+    $PayloadRoot = $SourceExe.Directory.FullName
+    $PayloadManifest = Get-ChildItem -LiteralPath $PayloadRoot -Recurse -File |
+        Sort-Object FullName |
+        ForEach-Object {
+            $RelativePath = [System.IO.Path]::GetRelativePath($PayloadRoot, $_.FullName).Replace("\", "/")
+            "$RelativePath $((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())"
+        }
+    $PayloadBytes = [System.Text.Encoding]::UTF8.GetBytes((($PayloadManifest -join "`n") + "`n"))
+    $ActualPayloadHash = ([System.BitConverter]::ToString(
+        [System.Security.Cryptography.SHA256]::HashData($PayloadBytes)
+    )).Replace("-", "").ToLowerInvariant()
+    if ($ActualPayloadHash -ne $ExifToolPayloadSha256) {
+        throw "ExifTool payload checksum mismatch. Expected $ExifToolPayloadSha256, got $ActualPayloadHash"
     }
 
     if (Test-Path -LiteralPath $DestinationFull) {
