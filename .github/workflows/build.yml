@@ -128,13 +128,20 @@ jobs:
           Remove-Item -LiteralPath $PortableDataDirectory -Recurse -Force -ErrorAction SilentlyContinue
           $env:GEOTAGGER_PORTABLE_SMOKE = "1"
           $env:GEOTAGGER_PORTABLE_DATA_DIR = $PortableDataDirectory
+          $SmokeLog = Join-Path $env:RUNNER_TEMP "geotagger-portable-smoke.log"
+          Remove-Item -LiteralPath $SmokeLog -Force -ErrorAction SilentlyContinue
+          $env:GEOTAGGER_PORTABLE_SMOKE_LOG = $SmokeLog
           $Executable = Join-Path $env:GITHUB_WORKSPACE "src-tauri/target/${{ matrix.target }}/release/geotagger.exe"
           if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) {
             throw "Portable Windows executable is missing: $Executable"
           }
           & $Executable
-          if ($LASTEXITCODE -ne 0) {
-            throw "Portable Windows executable self-check failed with exit code $LASTEXITCODE"
+          $SmokeExitCode = $LASTEXITCODE
+          if (Test-Path -LiteralPath $SmokeLog -PathType Leaf) {
+            Get-Content -LiteralPath $SmokeLog
+          }
+          if ($SmokeExitCode -ne 0) {
+            throw "Portable Windows executable self-check failed with exit code $SmokeExitCode"
           }
           $ExtractedExifTool = Get-ChildItem -LiteralPath $PortableDataDirectory -Filter "exiftool.exe" -File -Recurse |
             Select-Object -First 1

@@ -98,7 +98,11 @@ pub fn portable_smoke() -> i32 {
     match result {
         Ok(()) => 0,
         Err(error) => {
-            eprintln!("GeoTagger portable smoke failed: {error}");
+            let diagnostic = format!("GeoTagger portable smoke failed: {error}");
+            if let Some(path) = std::env::var_os("GEOTAGGER_PORTABLE_SMOKE_LOG") {
+                let _ = std::fs::write(path, &diagnostic);
+            }
+            eprintln!("{diagnostic}");
             1
         }
     }
