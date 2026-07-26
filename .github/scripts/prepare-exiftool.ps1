@@ -59,9 +59,15 @@ try {
             "$RelativePath $((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())"
         }
     $PayloadBytes = [System.Text.Encoding]::UTF8.GetBytes((($PayloadManifest -join "`n") + "`n"))
-    $ActualPayloadHash = ([System.BitConverter]::ToString(
-        [System.Security.Cryptography.SHA256]::HashData($PayloadBytes)
-    )).Replace("-", "").ToLowerInvariant()
+    $PayloadHasher = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $ActualPayloadHash = ([System.BitConverter]::ToString(
+            $PayloadHasher.ComputeHash($PayloadBytes)
+        )).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $PayloadHasher.Dispose()
+    }
     if ($ActualPayloadHash -ne $ExifToolPayloadSha256) {
         throw "ExifTool payload checksum mismatch. Expected $ExifToolPayloadSha256, got $ActualPayloadHash"
     }
