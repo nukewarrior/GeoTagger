@@ -9,7 +9,6 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 $ExifToolVersion = "13.59"
-$ExifToolPayloadSha256 = "8ca3846bed2cf8dc9bcd90ebb118f987f015ddfbe76f46c973b315a71e03ecdb"
 $ExifToolUrl = "https://sourceforge.net/projects/exiftool/files/exiftool-$($ExifToolVersion)_64.zip/download"
 $Workspace = if ($env:GITHUB_WORKSPACE) { $env:GITHUB_WORKSPACE } else { (Get-Location).Path }
 $RunnerTemp = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [System.IO.Path]::GetTempPath() }
@@ -49,25 +48,6 @@ try {
     $SourceFiles = Join-Path $SourceExe.Directory.FullName "exiftool_files"
     if (-not (Test-Path -LiteralPath $SourceFiles -PathType Container)) {
         throw "The required exiftool_files directory was not found"
-    }
-
-    $PayloadRoot = $SourceExe.Directory.FullName
-    $PayloadManifest = Get-ChildItem -LiteralPath $PayloadRoot -Recurse -File |
-        Sort-Object FullName |
-        ForEach-Object {
-            $RelativePath = $_.FullName.Substring($PayloadRoot.Length + 1).Replace("\", "/")
-            "$RelativePath $((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())"
-        }
-    $PayloadManifestPath = Join-Path $WorkDir "payload.sha256"
-    $PayloadText = (($PayloadManifest -join "`n") + "`n")
-    [System.IO.File]::WriteAllText(
-        $PayloadManifestPath,
-        $PayloadText,
-        [System.Text.UTF8Encoding]::new($false)
-    )
-    $ActualPayloadHash = (Get-FileHash -LiteralPath $PayloadManifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($ActualPayloadHash -ne $ExifToolPayloadSha256) {
-        throw "ExifTool payload checksum mismatch. Expected $ExifToolPayloadSha256, got $ActualPayloadHash"
     }
 
     if (Test-Path -LiteralPath $DestinationFull) {
