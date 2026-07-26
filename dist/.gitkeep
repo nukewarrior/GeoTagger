@@ -1,0 +1,2 @@
+# Tauri's compile-time configuration requires frontendDist to exist in Rust-only CI.
+# Vite replaces the directory contents during desktop builds.

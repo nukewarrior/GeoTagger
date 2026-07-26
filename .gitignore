@@ -8,7 +8,8 @@ docs/
 
 # Frontend dependencies and build output
 node_modules/
-dist/
+dist/*
+!dist/.gitkeep
 coverage/
 *.tsbuildinfo
 
