@@ -33,7 +33,18 @@ New-Item -ItemType Directory -Path $WorkDir | Out-Null
 
 try {
     $Archive = Join-Path $WorkDir "exiftool-$($ExifToolVersion)_64.zip"
-    Invoke-WebRequest -Uri $ExifToolUrl -OutFile $Archive -MaximumRedirection 10
+    & curl.exe `
+        --proto "=https" `
+        --tlsv1.2 `
+        --fail `
+        --location `
+        --retry 5 `
+        --retry-all-errors `
+        --output $Archive `
+        $ExifToolUrl
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to download the ExifTool archive"
+    }
 
     $Extracted = Join-Path $WorkDir "extracted"
     New-Item -ItemType Directory -Path $Extracted | Out-Null
